@@ -1,0 +1,20 @@
+# Secrets / local environment
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Logs
+*.log
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
