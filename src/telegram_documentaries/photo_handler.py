@@ -6,7 +6,7 @@ import tempfile
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from . import converter, interviewer, reply, state
+from . import converter, interviewer, reply, scripter, state
 from . import logging as tlog
 
 log = tlog.get_logger(__name__)
@@ -35,10 +35,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
                 os.unlink(path)
             except Exception:
                 pass
-        # store photo in state
         st = state.get(chat_id)
         st["photo_bytes"] = image_bytes
-        # start interview with default 5 questions
         q = interviewer.start_interview(chat_id, question_count=5)
         await reply.send_text(update, context, q)
     except Exception as e:
@@ -54,16 +52,18 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         if res is None:
             await reply.send_text(update, context, "No active interview.")
             return
-        # if final (contains Dossier:), trigger conversion
         if "Dossier:" in str(res):
             st = state.get(chat_id)
             photo_bytes = st.get("photo_bytes")
-            dossier = st.get("interview", {}).get("dossier", "")
+            iv = st.get("interview", {})
+            dossier = iv.get("dossier", "")
             if photo_bytes:
                 img = converter.generate_hybrid(bytes(photo_bytes), str(dossier))
-                # send image
                 await context.bot.send_photo(chat_id=chat_id, photo=img)
-                return
+            script = scripter.generate_script(str(dossier) or str(iv))
+            st["script"] = script
+            await reply.send_text(update, context, script)
+            return
         await reply.send_text(update, context, res)
     except Exception as e:
         log.exception("text_handler_error", exc_info=e)
