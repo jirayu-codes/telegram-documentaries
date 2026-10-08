@@ -3,7 +3,7 @@ from __future__ import annotations
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from . import converter, interviewer, reply, scripter, tts
+from . import converter, interviewer, scripter, tts
 from . import logging as tlog
 from .state import state
 
@@ -23,26 +23,23 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             if res is None:
                 return
             if "Dossier:" in res:
-                await _deliver_documentary(update, context, chat_id, st, res)
+                await _deliver_documentary(context, chat_id, st)
                 return
             await message.reply_text(res)
             return
-        msg = reply.handle_text_message()
-        await message.reply_text(msg)
+        await message.reply_text(
+            "Send me a clear portrait photo to start your wildlife documentary."
+        )
     except Exception:
+        await _notify_error(update)
         return
 
 
 async def _deliver_documentary(
-    update: Update,
     context: ContextTypes.DEFAULT_TYPE,
     chat_id: int | str,
     st: dict[str, object],
-    res: str,
 ) -> None:
-    message = update.effective_message
-    if message is None:
-        return
     interview = st.get("interview")
     dossier = ""
     if isinstance(interview, dict):
@@ -53,18 +50,27 @@ async def _deliver_documentary(
         await context.bot.send_photo(chat_id=chat_id, photo=img)
     script = scripter.generate_script(dossier)
     st["script"] = script
-    await message.reply_text(script)
+    await context.bot.send_message(chat_id=chat_id, text=script)
     audio = tts.synthesize_voice(script)
     if not audio:
         return
     path = tts.write_temp_ogg(audio)
     st["audio_path"] = path
+    with open(path, "rb") as f:
+        await context.bot.send_voice(
+            chat_id=chat_id,
+            voice=f,
+            filename="documentary.ogg",
+        )
+
+
+async def _notify_error(update: Update) -> None:
+    message = update.effective_message
+    if message is None:
+        return
     try:
-        with open(path, "rb") as f:
-            await context.bot.send_voice(
-                chat_id=chat_id,
-                voice=f,
-                filename="documentary.ogg",
-            )
+        await message.reply_text(
+            "Something went wrong on my end. Please try again or send /restart."
+        )
     except Exception:
         return

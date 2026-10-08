@@ -5,7 +5,7 @@ from typing import Any, cast
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from telegram_documentaries import bouncer, handlers
+from telegram_documentaries import bouncer, handlers, state
 from telegram_documentaries.types import ClassificationResult
 
 
@@ -55,6 +55,7 @@ class FakeContext:
 
 
 def test_photo_handler_routes_to_approve() -> None:
+    state.state.reset(42)
     bouncer.set_classifier(FakeClassifier(True))
     update = cast(Update, FakeUpdate(True))
     context = cast(ContextTypes.DEFAULT_TYPE, FakeContext())
@@ -68,6 +69,7 @@ def test_photo_handler_routes_to_approve() -> None:
 
 
 def test_photo_handler_routes_to_reject() -> None:
+    state.state.reset(42)
     bouncer.set_classifier(FakeClassifier(False))
     update = cast(Update, FakeUpdate(False))
     context = cast(ContextTypes.DEFAULT_TYPE, FakeContext())

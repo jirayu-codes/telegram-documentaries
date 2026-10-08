@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import logging
 
-from telegram.ext import Application, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, MessageHandler, filters
 
 from . import settings
-from .handlers import handle_photo
+from .handlers import handle_photo, handle_restart
 from .text_handler import handle_text
 
 LOGGER = logging.getLogger("telegram_documentaries")
@@ -28,9 +28,9 @@ def main() -> None:
         raise
 
     app = Application.builder().token(s.telegram_bot_token).build()
+    app.add_handler(CommandHandler(["start", "restart"], handle_restart))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-    app.add_handler(MessageHandler(filters.COMMAND, handle_text))
     LOGGER.info("event=gateway.polling.started")
     app.run_polling(drop_pending_updates=True)
 
