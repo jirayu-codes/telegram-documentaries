@@ -11,6 +11,13 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+dist/
+build/
+
+# Tool caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
 
 # Logs
 *.log

@@ -9,14 +9,14 @@ hushed awe, present tense, you observed as a specimen in your natural habitat.
 
 ## Project status
 
-**Pre-implementation.** The project constitution lives in [`SPECS/`](SPECS/)
+**Implemented (Phase 1).** The project constitution lives in [`SPECS/`](SPECS/)
 and is the single source of truth for everything built from here. There is no
 application code yet — no `src/`, `tests/`, or `scripts/`.
 
 | Piece | State |
 | --- | --- |
 | Constitution (`MISSION.md`, `TECH.md`, `ROADMAP.md`) | ✅ Complete |
-| `scripts/test`, `scripts/hooks` | ⏳ Phase 1 |
+| `scripts/test`, `scripts/hooks` | ✅ Phase 1 |
 | Application code | ⏳ Phases 2–7 |
 
 Check [`SPECS/ROADMAP.md`](SPECS/ROADMAP.md) for the live build order.
@@ -88,7 +88,7 @@ or `mypy` calls.
 | Script | Runs | Purpose |
 | --- | --- | --- |
 | `scripts/test` | pytest | Run the test suite. |
-| `scripts/hooks` | pytest + ruff + mypy | The full pre-commit suite. |
+| `scripts/hooks` | pytest + ruff + ruff-format + mypy + gitleaks | The full pre-commit suite. |
 
 ⚠️ **Neither script exists yet** — both are created in Phase 1 (Repository &
 gateway). Until then there is nothing to run.
@@ -140,3 +140,18 @@ The constitution deliberately excludes, among other things: video output,
 background music, persistence across restarts, group chats, multiple photos,
 sharing to other chats, voice-message input, a web dashboard, and monetisation.
 See the full list in [`SPECS/MISSION.md`](SPECS/MISSION.md).
+
+## Tooling prerequisites
+
+- **uv**: install via `pip install uv`. Verify with `uv --version`.
+- **gitleaks**: install v8.30.1 into your PATH (e.g. `~/bin`):
+
+```bash
+curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+mkdir -p "$HOME/bin"
+install -m 0755 /tmp/gitleaks "$HOME/bin/gitleaks"
+gitleaks version  # 8.30.1
+```
+
+Then `uv sync`.
