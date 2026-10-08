@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import os
-import tempfile
-
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -60,13 +57,14 @@ async def _deliver_documentary(
     audio = tts.synthesize_voice(script)
     if not audio:
         return
-    fd, path = tempfile.mkstemp(suffix=".wav")
-    os.close(fd)
+    path = tts.write_temp_ogg(audio)
+    st["audio_path"] = path
     try:
-        with open(path, "wb") as f:
-            f.write(audio)
-        st["audio_path"] = path
         with open(path, "rb") as f:
-            await context.bot.send_voice(chat_id=chat_id, voice=f)
+            await context.bot.send_voice(
+                chat_id=chat_id,
+                voice=f,
+                filename="documentary.ogg",
+            )
     except Exception:
         return
