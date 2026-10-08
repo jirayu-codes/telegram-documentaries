@@ -6,7 +6,7 @@ import tempfile
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from . import converter, interviewer, reply, scripter, state
+from . import converter, interviewer, reply, scripter, state, tts
 from . import logging as tlog
 
 log = tlog.get_logger(__name__)
@@ -63,6 +63,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             script = scripter.generate_script(str(dossier) or str(iv))
             st["script"] = script
             await reply.send_text(update, context, script)
+            audio = tts.synthesize_voice(script)
+            if audio:
+                fd, apath = tempfile.mkstemp(suffix=".wav")
+                try:
+                    os.close(fd)
+                    with open(apath, "wb") as f:
+                        f.write(audio)
+                    st["audio_path"] = apath
+                    with open(apath, "rb") as f:
+                        await context.bot.send_voice(chat_id=chat_id, voice=f)
+                except Exception as e:
+                    log.exception("send_voice_error", exc_info=e)
+                finally:
+                    # keep path in state as requested; clean up later if desired
+                    pass
             return
         await reply.send_text(update, context, res)
     except Exception as e:
