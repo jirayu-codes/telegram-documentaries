@@ -20,13 +20,17 @@ class _GeminiImpl:
             s = settings.load_settings()
             cast(Any, genai).configure(api_key=s.gemini_api_key)
             model = cast(Any, genai).GenerativeModel("gemini-3.1-flash-lite")
-            prompt = (
-                "You are an investigative, playful, slightly eccentric documentary researcher. "
-                "Ask ONE sharp question (5-7 words). Based on history so far: "
-                f"{history}. Return only the question text."
-            )
+            hist = str(history)
+            intro = "You are an investigative, playful, documentary researcher. "
+            q_req = "Ask ONE sharp question (5-7 words). "
+            h_req = "History: "
+            end = ". Return only the question text."
+            prompt = intro + q_req + h_req + hist + end
             response = model.generate_content([prompt])
-            text = getattr(response, "text", "") or "Tell me one quirky thing about your day."
+            text = (
+                getattr(response, "text", "")
+                or "Tell me one quirky thing about your day."
+            )
             return text.strip()
         except Exception:
             return "Tell me one quirky thing about your day."
@@ -41,16 +45,21 @@ class _GeminiImpl:
             cast(Any, genai).configure(api_key=s.gemini_api_key)
             model = cast(Any, genai).GenerativeModel("gemini-3.1-flash-lite")
             prompt = (
-                "Synthesize a clean behavioral dossier from history. Also suggest an animal. "
+                "Synthesize a clean behavioral dossier from history. "
+                "Also suggest an animal. "
                 f"History: {history}. Return JSON: "
                 '{"dossier": "...", "suggested_animal": "..."}'
             )
             response = model.generate_content([prompt])
-            text = getattr(response, "text", "") or '{"dossier": "curious subject", "suggested_animal": "fox"}'
+            text = getattr(response, "text", "") or (
+                '{"dossier": "curious subject", "suggested_animal": "fox"}'
+            )
             import json
 
             data: dict[str, Any] = json.loads(text.strip())
-            return str(data.get("dossier", "curious")), str(data.get("suggested_animal", "fox"))
+            dossier = str(data.get("dossier", "curious"))
+            animal = str(data.get("suggested_animal", "fox"))
+            return dossier, animal
         except Exception:
             return "curious subject", "fox"
 

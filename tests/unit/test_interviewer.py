@@ -1,15 +1,19 @@
+from __future__ import annotations
+
 from telegram_documentaries import interviewer
 
 
 class FakeInt:
-    def __init__(self):
+    def __init__(self) -> None:
         self.calls = 0
 
-    def generate_question(self, history):
+    def generate_question(self, history: list[dict[str, str]]) -> str:
+        _ = history
         self.calls += 1
         return f"Q{self.calls}"
 
-    def synthesize(self, history):
+    def synthesize(self, history: list[dict[str, str]]) -> tuple[str, str]:
+        _ = history
         return "dossier text", "fox"
 
 
