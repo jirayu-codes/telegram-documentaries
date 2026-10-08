@@ -3,8 +3,8 @@ from __future__ import annotations
 from telegram import Update
 from telegram.ext import ContextTypes
 
+from . import interviewer, photo
 from . import logging as tlog
-from . import photo
 from .bouncer import classify
 from .state import state
 
@@ -27,7 +27,19 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.effective_message.reply_text(
                 "Human detected. Ready to proceed."
             )
-            state.reset(chat_id)
+            q = interviewer.start_interview(chat_id)
+            await update.effective_message.reply_text(q)
+            state.reset(chat_id)  # ensure clean
+            st = state.get(chat_id)
+            st["interview"] = {
+                "phase": "AWAITING_ANSWER_1",
+                "q_index": 0,
+                "history": [],
+                "dossier": "",
+                "suggested_animal": "",
+                "question_count": 5,
+                "current_question": q,
+            }
             return
         else:
             state.reset(chat_id)
