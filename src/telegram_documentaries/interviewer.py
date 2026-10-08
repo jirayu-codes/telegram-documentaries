@@ -1,8 +1,18 @@
 from __future__ import annotations
 
-from typing import Any, Protocol, cast
+import json
+from typing import Any, Protocol
 
+from . import gemini
 from .state import state
+
+MIN_QUESTIONS = 5
+MAX_QUESTIONS = 7
+
+_PERSONA = (
+    "You are an investigative, playful, slightly eccentric documentary "
+    "researcher studying a human specimen before filming."
+)
 
 
 class GeminiInterviewer(Protocol):
@@ -12,56 +22,42 @@ class GeminiInterviewer(Protocol):
 
 class _GeminiImpl:
     def generate_question(self, history: list[dict[str, str]]) -> str:
+        prompt = (
+            f"{_PERSONA} Ask exactly ONE short question (5-7 words) about the "
+            "subject's habits, bedtime, or snacking. Return ONLY the question "
+            f"text, no quotes or numbering. Conversation so far: {history}"
+        )
         try:
-            import google.generativeai as genai
-
-            from . import settings
-
-            s = settings.load_settings()
-            cast(Any, genai).configure(api_key=s.gemini_api_key)
-            model = cast(Any, genai).GenerativeModel("gemini-3.1-flash-lite")
-            hist = str(history)
-            intro = "You are an investigative, playful, documentary researcher. "
-            q_req = "Ask ONE sharp question (5-7 words). "
-            h_req = "History: "
-            end = ". Return only the question text."
-            prompt = intro + q_req + h_req + hist + end
-            response = model.generate_content([prompt])
-            text = (
-                getattr(response, "text", "")
-                or "Tell me one quirky thing about your day."
-            )
-            return text.strip()
+            text = gemini.generate_text(prompt)
+            text = text.strip().strip('"').strip()
+            return text or "What do you snack on at midnight?"
         except Exception:
-            return "Tell me one quirky thing about your day."
+            return "What do you snack on at midnight?"
 
     def synthesize(self, history: list[dict[str, str]]) -> tuple[str, str]:
+        prompt = (
+            f"{_PERSONA} Synthesize a rich behavioural dossier from the "
+            "conversation, then suggest the animal that best matches these "
+            "quirks. Return ONLY JSON: "
+            '{"dossier": "...", "suggested_animal": "..."}. '
+            f"Conversation: {history}"
+        )
         try:
-            import google.generativeai as genai
-
-            from . import settings
-
-            s = settings.load_settings()
-            cast(Any, genai).configure(api_key=s.gemini_api_key)
-            model = cast(Any, genai).GenerativeModel("gemini-3.1-flash-lite")
-            prompt = (
-                "Synthesize a clean behavioral dossier from history. "
-                "Also suggest an animal. "
-                f"History: {history}. Return JSON: "
-                '{"dossier": "...", "suggested_animal": "..."}'
-            )
-            response = model.generate_content([prompt])
-            text = getattr(response, "text", "") or (
-                '{"dossier": "curious subject", "suggested_animal": "fox"}'
-            )
-            import json
-
-            data: dict[str, Any] = json.loads(text.strip())
-            dossier = str(data.get("dossier", "curious"))
+            text = gemini.generate_text(prompt)
+            data: dict[str, Any] = json.loads(_strip_code_fence(text).strip())
+            dossier = str(data.get("dossier", "A deeply curious specimen."))
             animal = str(data.get("suggested_animal", "fox"))
             return dossier, animal
         except Exception:
-            return "curious subject", "fox"
+            return "A deeply curious specimen with mysterious habits.", "fox"
+
+
+def _strip_code_fence(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        cleaned = cleaned.replace("json", "", 1).strip()
+    return cleaned
 
 
 _interviewer: GeminiInterviewer = _GeminiImpl()
@@ -72,13 +68,13 @@ def set_interviewer(i: GeminiInterviewer) -> None:
     _interviewer = i
 
 
-def start_interview(chat_id: int | str, question_count: int = 5) -> str:
+def start_interview(chat_id: int | str, question_count: int = MIN_QUESTIONS) -> str:
     st = state.get(chat_id)
     qcount = int(question_count)
-    if qcount < 5:
-        qcount = 5
-    if qcount > 7:
-        qcount = 7
+    if qcount < MIN_QUESTIONS:
+        qcount = MIN_QUESTIONS
+    if qcount > MAX_QUESTIONS:
+        qcount = MAX_QUESTIONS
     q = _interviewer.generate_question([])
     st["interview"] = {
         "phase": "AWAITING_ANSWER_1",
@@ -104,7 +100,7 @@ def handle_answer(chat_id: int | str, answer: str) -> str | None:
     iv["history"] = hist
     answers_received = int(iv.get("answers_received", 0)) + 1
     iv["answers_received"] = answers_received
-    qcount = int(iv.get("question_count", 5))
+    qcount = int(iv.get("question_count", MIN_QUESTIONS))
     if answers_received >= qcount:
         dossier, animal = _interviewer.synthesize(hist)
         iv["dossier"] = dossier

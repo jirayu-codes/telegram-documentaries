@@ -1,8 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Protocol, cast
+import json
+from typing import Any, Protocol
 
+from . import gemini
 from .types import ClassificationResult
+
+TEXT_MODEL = "gemini-3.1-flash-lite"
 
 
 class GeminiClassifier(Protocol):
@@ -11,34 +15,36 @@ class GeminiClassifier(Protocol):
 
 class _GeminiImpl:
     def classify(self, image_bytes: bytes, mime: str) -> ClassificationResult:
+        prompt = (
+            "You are a strict, slightly theatrical bouncer at the door of a "
+            "wildlife documentary. Decide whether the image contains a "
+            "discernible human face or body. Respond ONLY as JSON: "
+            '{"is_human": true|false, "reason": "<brief cheeky explanation>"}'
+        )
         try:
-            import google.generativeai as genai
-
-            from . import settings
-
-            s = settings.load_settings()
-            cast(Any, genai).configure(api_key=s.gemini_api_key)
-            model = cast(Any, genai).GenerativeModel("gemini-3.1-flash-lite")
-            prompt = (
-                "You are a strict bouncer. Classify if the image contains a "
-                "discernible human face or body. Respond only as JSON: "
-                '{"is_human": true|false, "reason": "<brief cheeky explanation>"}'
+            text = gemini.generate_text(
+                prompt,
+                model=TEXT_MODEL,
+                image=(image_bytes, mime),
             )
-            response = model.generate_content(
-                [prompt, {"mime_type": mime, "data": image_bytes}]
-            )
-            text = getattr(response, "text", "") or ""
-            import json
-
-            data: dict[str, Any] = json.loads(text.strip())
+            data: dict[str, Any] = json.loads(_strip_code_fence(text).strip())
             return ClassificationResult(
                 is_human=bool(data.get("is_human")),
                 reason=str(data.get("reason", "")),
             )
         except Exception:
             return ClassificationResult(
-                is_human=False, reason="Looks suspicious — not clearly human."
+                is_human=False,
+                reason="Security camera's gone fuzzy — can't confirm a human.",
             )
+
+
+def _strip_code_fence(text: str) -> str:
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`")
+        cleaned = cleaned.replace("json", "", 1).strip()
+    return cleaned
 
 
 _classifier: GeminiClassifier = _GeminiImpl()
