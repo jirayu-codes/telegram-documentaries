@@ -7,6 +7,7 @@ from telegram.ext import Application, ContextTypes, MessageHandler, filters
 
 from . import logging as tlog
 from . import reply, settings
+from .handlers import handle_photo
 
 LOGGER = logging.getLogger("telegram_documentaries")
 
@@ -26,7 +27,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     except Exception:
         LOGGER.exception("event=gateway.handle_text.error")
         return
-
     try:
         if update.effective_message is None:
             return
@@ -46,6 +46,7 @@ def main() -> None:
         raise
 
     app = Application.builder().token(s.telegram_bot_token).build()
+    app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(MessageHandler(filters.COMMAND, handle_text))
     LOGGER.info("event=gateway.polling.started")

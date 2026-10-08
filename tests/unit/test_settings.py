@@ -37,7 +37,7 @@ def test_bad_token_format_raises(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_valid_settings_load(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123456:ABCDEF")
-    monkeypatch.setenv("GEMINI_API_KEY", "AIzaSyBqeYyGGk8YFniia0WMsKj6beBVcRU4MuA")
+    monkeypatch.setenv("GEMINI_API_KEY", "test_gemini_key_1234567890abcdef")
     s = settings.load_settings(env_file=Path("/tmp/nonexistent.env"))
     assert s.telegram_bot_token == "123456:ABCDEF"
-    assert s.gemini_api_key == "AIzaSyBqeYyGGk8YFniia0WMsKj6beBVcRU4MuA"
+    assert s.gemini_api_key == "test_gemini_key_1234567890abcdef"

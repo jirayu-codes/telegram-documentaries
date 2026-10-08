@@ -1,0 +1,14 @@
+[allowlist]
+description = "allowlisted test values"
+paths = [
+  '''tests/.*''',
+  '''.env.example''',
+]
+
+regexes = [
+  '''test_gemini_key_[0-9a-f]+''',
+  '''123456:ABCDEF''',
+  '''123:abc''',
+  '''justatoken''',
+  '''key123''',
+]
