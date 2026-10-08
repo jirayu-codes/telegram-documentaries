@@ -96,7 +96,7 @@ without amending this file.
 - Dev scripts in `scripts/` are the **ground truth** for tests, lint, and type
   checks:
   - `scripts/test` — run the suite (pytest).
-  - `scripts/hooks` — the full pre-commit suite (pytest + ruff + mypy).
+  - `scripts/hooks` — the full pre-commit suite (pytest + ruff + ruff-format + mypy + gitleaks).
 - Never bypass these scripts with ad-hoc `pytest` / `ruff` / `mypy`
   invocations.
 - Both scripts are documented in `README.md` and kept in sync with it.

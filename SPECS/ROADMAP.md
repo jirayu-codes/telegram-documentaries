@@ -17,7 +17,7 @@ they pass.
 | 4 | **Converter** | Multimodal hybrid portrait delivered to Telegram | Photo + dossier synthesise to an image that arrives in the chat | Rubric: image |
 | 5 | **Scripter** | One-paragraph narration | A 60–90 word dramatic paragraph derived from the dossier | Rubric: script |
 | 6 | **Narrator** | TTS synthesis and audio delivery | Script text renders to OGG/MP3 and arrives as a voice note | Rubric: voice |
-| 7 | **Resilience** | `/restart` and `/start` reset (purge state and temp files), wrong-payload-at-wrong-stage guards, API-timeout fallbacks | Out-of-order input is handled gracefully; reset works without restarting the process | Rubric: robustness |
+| 7 | **Resilience** | `/restart` and `/start` reset (cancel active session, purge temp files, re-initialise memory), wrong-payload-at-wrong-stage guards, API-timeout fallbacks | Out-of-order input is handled gracefully; reset works without restarting the process | Rubric: robustness |
 
 ## Test directory philosophy
 

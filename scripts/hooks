@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# The full pre-commit suite. Runs, in order, failing fast and naming the
+# tool that failed:
+#
+#   1. pytest
+#   2. ruff check
+#   3. ruff format --check
+#   4. mypy
+#   5. gitleaks detect
+#
+# Never bypass this script with ad-hoc tool invocations (SPECS/TECH.md).
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+# --- preflight: fail loudly with install instructions, never skip a tool ----
+if ! command -v uv >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+FAILED: uv is not installed (or not on PATH).
+
+Install it from PyPI:
+    pip install uv
+
+Then re-run: scripts/hooks
+EOF
+  exit 1
+fi
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'EOF'
+FAILED: gitleaks is not installed (or not on PATH).
+
+Install the release binary (v8.30.1) into the first writable PATH entry
+(~/bin):
+    curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
+    tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
+    mkdir -p "$HOME/bin"
+    install -m 0755 /tmp/gitleaks "$HOME/bin/gitleaks"
+    gitleaks version        # expect: 8.30.1
+
+Then re-run: scripts/hooks
+EOF
+  exit 1
+fi
+
+# --- the five tools, in order, fail-fast ------------------------------------
+run() {
+  local name="$1"
+  shift
+  printf '\n==> %s\n' "$name"
+  if ! "$@"; then
+    printf '\nFAILED: %s — fix the reported problems and re-run scripts/hooks\n' \
+      "$name" >&2
+    exit 1
+  fi
+}
+
+run "pytest" uv run pytest
+run "ruff check" uv run ruff check
+run "ruff format --check" uv run ruff format --check
+run "mypy" uv run mypy
+# --redact keeps any discovered secret out of the terminal output.
+run "gitleaks detect" gitleaks detect --no-banner --redact --source .
+
+printf '\nAll five pre-commit checks passed.\n'

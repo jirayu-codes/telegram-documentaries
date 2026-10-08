@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Versioned git pre-commit hook. Delegates to scripts/hooks — the single
+# source of truth for the pre-commit suite; no tool invocations live here.
+#
+# Wire once per clone (documented in README.md):
+#     git config core.hooksPath scripts/git-hooks
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+exec "$repo_root/scripts/hooks"
