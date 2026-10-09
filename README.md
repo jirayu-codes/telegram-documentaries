@@ -9,43 +9,39 @@ hushed awe, present tense, you observed as a specimen in your natural habitat.
 
 ## Project status
 
-**Implemented (Phase 1).** The project constitution lives in [`SPECS/`](SPECS/)
-and is the single source of truth for everything built from here. There is no
-application code yet — no `src/`, `tests/`, or `scripts/`.
+✅ **Fully implemented (Phases 1–7).** All tests pass and all hooks are green.
 
 | Piece | State |
 | --- | --- |
 | Constitution (`MISSION.md`, `TECH.md`, `ROADMAP.md`) | ✅ Complete |
-| `scripts/test`, `scripts/hooks` | ✅ Phase 1 |
-| Application code | ⏳ Phases 2–7 |
+| `scripts/test`, `scripts/hooks` | ✅ Working |
+| Application code | ✅ Complete |
 
-Check [`SPECS/ROADMAP.md`](SPECS/ROADMAP.md) for the live build order.
+Check [`SPECS/ROADMAP.md`](SPECS/ROADMAP.md) for the full build order.
 
 ## How it works
 
-A hub-and-spoke pipeline built on Google ADK. The **Interviewer** is the
-orchestrator; the others are specialists it delegates to.
+A hub-and-spoke pipeline. The **Interviewer** orchestrates the conversation state;
+specialist modules handle Bouncer, Converter, and Scripter. Narration uses direct
+TTS.
 
 | # | Stage | Model | What it does |
 | --- | --- | --- | --- |
-| 1 | **Bouncer** | Gemini 3.1 Flash Lite (vision) | Confirms the image contains a human. Cars, pets, and food get a cheeky rejection, and the run resets. |
-| 2 | **Interviewer** *(orchestrator)* | Gemini 3.1 Flash Lite | Asks 5–7 questions, one per turn, and builds a behavioural dossier keyed by `chat_id`. Also suggests an animal. |
-| 3 | **Converter** | Gemini 3.1 Flash Image | Fuses the original photo and the dossier into a hybrid animal portrait, sent straight to the chat. |
+| 1 | **Bouncer** | Gemini 3.1 Flash Lite (vision) | Confirms the image contains a human. Rejects non-human images with a cheeky response and resets the run. |
+| 2 | **Interviewer** *(orchestrator)* | Gemini 3.1 Flash Lite | Asks 5–7 questions, one per turn, builds a behavioural dossier keyed by `chat_id`, and suggests an animal. |
+| 3 | **Converter** | Gemini 3.1 Flash Image | Fuses the original photo and the dossier into a hybrid animal portrait and sends it directly to the chat. |
 | 4 | **Scripter** | Gemini 3.1 Flash Lite | Writes one dramatic 60–90 word nature-documentary paragraph from the dossier. |
-| 5 | **Narrator** | `gemini-3.1-flash-tts-preview` | Renders that paragraph to an OGG/MP3 voice note. |
+| 5 | **Narrator** | `gemini-3.1-flash-tts-preview` | Renders that paragraph to an OGG/OPUS voice note and sends it via Telegram. |
 
-**The Narrator is not an agent** — TTS is an execution tool. The orchestrator
-simply forwards the Scripter's text to the Gemini TTS endpoint.
-
-Transport is Telegram **long polling** (`getUpdates`). No webhooks, no public
-URL, no tunneling tools. Session state is held **in memory**, keyed by
-`chat_id`, and is purged by `/start` or `/restart` without restarting the
-process.
+Transport is Telegram **long polling** (`getUpdates`). Session state is held
+**in memory**, keyed by `chat_id`, and is purged by `/start` or `/restart`
+without restarting the process. Robust guards handle out-of-order input.
 
 ## Requirements
 
 - Python 3.11+
-- `git`
+- [`uv`](https://docs.astral.sh/uv/) (recommended)
+- [`gitleaks`](https://github.com/gitleaks/gitleaks) (required for hooks)
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
 - A [Google Gemini API key](https://aistudio.google.com/apikey)
 
@@ -59,99 +55,73 @@ cd telegram-documentaries
 # 2. Create your local environment file
 cp .env.example .env
 
-# 3. Fill in your keys (see the table below)
+# 3. Fill in your keys
 $EDITOR .env
+
+# 4. Sync dependencies
+uv sync
 ```
 
 `.env` is gitignored and must never be committed. `.env.example` carries
 placeholders only.
 
-> Dependency installation and the run command land with **Phase 1** of the
-> roadmap.
-
 ## Environment variables
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `TELEGRAM_BOT_TOKEN` | Yes | Auth token for the Telegram Bot API. Issued by @BotFather. |
-| `GEMINI_API_KEY` | Yes | Google AI Studio key used for every Gemini call (vision, interview, image, TTS). |
+| `TELEGRAM_BOT_TOKEN` | Yes | Auth token for the Telegram Bot API. |
+| `GEMINI_API_KEY` | Yes | Google Gemini API key used for all model calls. |
 
-Both are read from `.env` at startup. Never hardcode them — this is a
-non-negotiable in [`SPECS/MISSION.md`](SPECS/MISSION.md).
+## Running the bot
+
+```bash
+# Run the Telegram bot (long polling)
+uv run telegram-documentaries
+```
 
 ## Development scripts
 
-[`SPECS/TECH.md`](SPECS/TECH.md) names two scripts as the **ground truth** for
-tests, lint, and type checks. Never bypass them with ad-hoc `pytest`, `ruff`,
-or `mypy` calls.
-
 | Script | Runs | Purpose |
 | --- | --- | --- |
-| `scripts/test` | pytest | Run the test suite. |
+| `scripts/test` | pytest | Run the full test suite (27 unit/integration tests). |
 | `scripts/hooks` | pytest + ruff + ruff-format + mypy + gitleaks | The full pre-commit suite. |
 
-⚠️ **Neither script exists yet** — both are created in Phase 1 (Repository &
-gateway). Until then there is nothing to run.
+Both scripts are the ground truth. Never bypass them with ad-hoc commands.
 
 ## Testing philosophy
 
-- **Red/Green TDD.** Tests are written before code, and must fail before they
-  pass.
-- Tests live in `tests/`, mirroring the source layout one file per module.
-  - `tests/unit/` — pure logic (state machine, boundary contracts, parsers),
-    no network access.
-  - `tests/integration/` — module wiring with Telegram and Gemini faked at
-    their boundary contracts.
+- **Red/Green TDD.** Tests are written to drive behaviour.
+- `tests/unit/` — pure logic (state machine, contracts, parsers); no network.
+- `tests/integration/` — wiring with Telegram/Gemini faked at boundaries.
 - The suite **never makes live network calls**.
 
 ## Project structure
 
 ```
 telegram-documentaries/
-├── SPECS/                  # The constitution — single source of truth
-│   ├── MISSION.md          # What the product is; in/out of scope
-│   ├── TECH.md             # Stack, architecture, policies
-│   └── ROADMAP.md          # Ordered build plan
-├── .env.example            # Placeholder secrets (real .env is gitignored)
-├── .guides/                # Guide illustration assets
-├── applet_prompts.md       # Prompts used to generate the guide applets
-└── telegram-arch.html      # Polling vs. webhooks guide page
+├── SPECS/                  # Constitution + per-phase specs
+├── src/telegram_documentaries/
+├── scripts/                # test + hooks
+└── tests/                  # unit + integration
 ```
+
+## End-to-end usage
+
+1. Send `/start` (or `/restart`) to the bot.
+2. Send a **human** portrait photo — the Bouncer validates and proceeds.
+3. Answer **5–7** questions, one per turn — the Interviewer builds your dossier.
+4. Receive your **hybrid animal portrait**.
+5. Receive a **60–90 word dramatic narration script**.
+6. Receive a **British-narrator voice note** (OGG/OPUS).
+7. Type `/restart` to start fresh at any time.
+
+Non-human photos are rejected politely. The bot handles out-of-order text/photo
+gracefully and never requires a process restart.
 
 ## Specifications
 
-Development follows **Spec-Driven Development**. Nothing gets built without a
-spec.
-
-- **[`SPECS/MISSION.md`](SPECS/MISSION.md)** — the product contract: what the
-  bot does, what it explicitly will *not* do, and how we know it works.
-- **[`SPECS/TECH.md`](SPECS/TECH.md)** — the technical contract: stack,
-  architecture, the 8-phase state machine, boundary contracts, logging and
-  error policy, testing rules.
-- **[`SPECS/ROADMAP.md`](SPECS/ROADMAP.md)** — the ordered plan. Seven phases,
-  each with acceptance criteria.
-
-Individual features live in `SPECS/<YYYY-MM-DD>-<feature-name>/` as
-`requirements.md`, `plan.md`, and `validation.md`.
-
-## Out of scope
-
-The constitution deliberately excludes, among other things: video output,
-background music, persistence across restarts, group chats, multiple photos,
-sharing to other chats, voice-message input, a web dashboard, and monetisation.
-See the full list in [`SPECS/MISSION.md`](SPECS/MISSION.md).
-
-## Tooling prerequisites
-
-- **uv**: install via `pip install uv`. Verify with `uv --version`.
-- **gitleaks**: install v8.30.1 into your PATH (e.g. `~/bin`):
-
-```bash
-curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz -o /tmp/gitleaks.tar.gz
-tar -xzf /tmp/gitleaks.tar.gz -C /tmp gitleaks
-mkdir -p "$HOME/bin"
-install -m 0755 /tmp/gitleaks "$HOME/bin/gitleaks"
-gitleaks version  # 8.30.1
-```
-
-Then `uv sync`.
+- **[`SPECS/MISSION.md`](SPECS/MISSION.md)** — product contract, in/out of scope.
+- **[`SPECS/TECH.md`](SPECS/TECH.md)** — stack, architecture, policies.
+- **[`SPECS/ROADMAP.md`](SPECS/ROADMAP.md)** — ordered build plan.
+- Per-phase specs: `SPECS/YYYY-MM-DD-<feature>/` (`requirements.md`, `plan.md`,
+  `validation.md`).
