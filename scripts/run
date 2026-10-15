@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Start the Telegram bot as a background (detached) process.
+# Survives the terminal/session that launched it. Logs to bot.log in the repo root.
+# Use scripts/stop to shut it down.
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+LOG="${BOT_LOG:-$PWD/bot.log}"
+
+# Refuse to start a second poller: two instances cause Telegram 409 conflicts.
+if pgrep -f "telegram_documentaries.gateway" >/dev/null 2>&1; then
+    echo "A bot instance is already running. Run scripts/stop first." >&2
+    exit 1
+fi
+
+: >"$LOG"
+setsid uv run python -m telegram_documentaries.gateway </dev/null >>"$LOG" 2>&1 &
+PID=$!
+disown || true
+
+sleep 2
+if kill -0 "$PID" 2>/dev/null; then
+    echo "Bot started (pid $PID). Logs: $LOG"
+else
+    echo "Bot failed to start. See $LOG" >&2
+    tail -n 20 "$LOG" >&2 || true
+    exit 1
+fi

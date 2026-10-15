@@ -75,9 +75,16 @@ placeholders only.
 ## Running the bot
 
 ```bash
-# Run the Telegram bot (long polling)
+# Run the Telegram bot in the foreground (long polling)
 uv run telegram-documentaries
+
+# Or start it in the background so it keeps running after you close the terminal
+scripts/run     # starts detached, logs to ./bot.log
+scripts/stop    # stops the background instance
 ```
+
+> Only one instance may poll at a time. Running two causes Telegram `409 Conflict`
+> and messages will be dropped — always `scripts/stop` before starting another.
 
 ## Development scripts
 
@@ -85,6 +92,8 @@ uv run telegram-documentaries
 | --- | --- | --- |
 | `scripts/test` | pytest | Run the full test suite (27 unit/integration tests). |
 | `scripts/hooks` | pytest + ruff + ruff-format + mypy + gitleaks | The full pre-commit suite. |
+| `scripts/run` | `telegram-documentaries` | Start the bot detached; logs to `./bot.log`. |
+| `scripts/stop` | `pkill` | Stop the background bot. |
 
 Both scripts are the ground truth. Never bypass them with ad-hoc commands.
 
