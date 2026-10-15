@@ -25,7 +25,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             )
             return
         largest = message.photo[-1]
-        payload = photo.download_photo(context.bot, largest.file_id, chat_id)
+        payload = await photo.download_photo(context.bot, largest.file_id, chat_id)
         if payload is None:
             await message.reply_text("Hmm, couldn't load that photo. Try again.")
             return

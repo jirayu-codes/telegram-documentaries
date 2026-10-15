@@ -7,10 +7,12 @@ from .types import PhotoPayload
 
 
 @tlog.log_call("photo.download")
-def download_photo(bot: Any, file_id: str, chat_id: int | str) -> PhotoPayload | None:
+async def download_photo(
+    bot: Any, file_id: str, chat_id: int | str
+) -> PhotoPayload | None:
     try:
-        file = bot.get_file(file_id)
-        bytes_data = file.download_as_bytearray()
+        file = await bot.get_file(file_id)
+        bytes_data = await file.download_as_bytearray()
         return PhotoPayload(
             chat_id=chat_id,
             file_id=file_id,

@@ -21,12 +21,12 @@ class FakeFile:
     def __init__(self, data: bytes) -> None:
         self._data = data
 
-    def download_as_bytearray(self) -> bytearray:
+    async def download_as_bytearray(self) -> bytearray:
         return bytearray(self._data)
 
 
 class FakeBot:
-    def get_file(self, file_id: str) -> FakeFile:
+    async def get_file(self, file_id: str) -> FakeFile:
         assert file_id == "fid"
         return FakeFile(b"img")
 
