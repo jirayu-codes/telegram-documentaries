@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from . import logging as tlog
 from .types import PhotoPayload
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 
 @tlog.log_call("photo.download")
@@ -20,4 +23,5 @@ async def download_photo(
             mime="image/jpeg",
         )
     except Exception:
+        LOGGER.exception("event=photo.download.error file_id=%s", file_id)
         return None

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
@@ -7,6 +9,8 @@ from . import interviewer, photo
 from . import logging as tlog
 from .bouncer import classify
 from .state import state
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 
 @tlog.log_call("handlers.photo")
@@ -30,6 +34,11 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await message.reply_text("Hmm, couldn't load that photo. Try again.")
             return
         res = classify(payload.bytes, payload.mime)
+        LOGGER.info(
+            "event=handlers.photo.classified is_human=%s bytes=%d",
+            res.is_human,
+            len(payload.bytes),
+        )
         if res.is_human:
             state.purge(chat_id)
             st = state.get(chat_id)
@@ -43,6 +52,7 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         msg = f"Nice try, but I don't think that's human. {reason}. Send a clear photo."
         await message.reply_text(msg)
     except Exception:
+        LOGGER.exception("event=handlers.photo.error")
         await _notify_error(update)
         return
 

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import logging
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from . import converter, interviewer, scripter, tts
 from . import logging as tlog
 from .state import state
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 
 @tlog.log_call("handlers.text")
@@ -31,6 +35,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
             "Send me a clear portrait photo to start your wildlife documentary."
         )
     except Exception:
+        LOGGER.exception("event=handlers.text.error")
         await _notify_error(update)
         return
 
@@ -44,15 +49,24 @@ async def _deliver_documentary(
     dossier = ""
     if isinstance(interview, dict):
         dossier = str(interview.get("dossier", ""))
+    LOGGER.info("event=deliver.start dossier_len=%d", len(dossier))
     photo_bytes = st.get("photo_bytes")
     if isinstance(photo_bytes, (bytes, bytearray)):
         img = converter.generate_hybrid(bytes(photo_bytes), dossier)
-        await context.bot.send_photo(chat_id=chat_id, photo=img)
+        LOGGER.info("event=deliver.image bytes=%d", len(img))
+        if img:
+            await context.bot.send_photo(chat_id=chat_id, photo=img)
     script = scripter.generate_script(dossier)
+    LOGGER.info("event=deliver.script chars=%d", len(script))
     st["script"] = script
     await context.bot.send_message(chat_id=chat_id, text=script)
     audio = tts.synthesize_voice(script)
+    LOGGER.info("event=deliver.audio bytes=%d", len(audio))
     if not audio:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text="(The narrator lost their voice — but the story lives on!)",
+        )
         return
     path = tts.write_temp_ogg(audio)
     st["audio_path"] = path
@@ -62,6 +76,7 @@ async def _deliver_documentary(
             voice=f,
             filename="documentary.ogg",
         )
+    LOGGER.info("event=deliver.done")
 
 
 async def _notify_error(update: Update) -> None:

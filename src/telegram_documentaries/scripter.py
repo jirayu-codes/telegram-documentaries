@@ -6,6 +6,12 @@ from . import gemini
 
 _MAX_WORDS = 90
 
+_FALLBACK = (
+    "And here, in the fading light, we find our subject — a remarkable "
+    "specimen of quiet routines and questionable snacking, perfectly adapted "
+    "to its peculiar little habitat."
+)
+
 _SYSTEM = (
     "You are a revered, dramatic British wildlife documentary narrator "
     "(think David Attenborough). Observe the human subject as if it were a "
@@ -25,13 +31,10 @@ class _GeminiImpl:
         prompt = f"{_SYSTEM} Subject dossier: {summary}"
         try:
             text = gemini.generate_text(prompt).strip()
-            return _enforce_one_paragraph(text)
+            script = _enforce_one_paragraph(text)
+            return script or _FALLBACK
         except Exception:
-            return (
-                "And here, in the fading light, we find our subject — a "
-                "remarkable specimen of quiet routines and questionable "
-                "snacking, perfectly adapted to its peculiar little habitat."
-            )
+            return _FALLBACK
 
 
 def _enforce_one_paragraph(text: str) -> str:
