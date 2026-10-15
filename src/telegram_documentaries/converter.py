@@ -5,11 +5,10 @@ from typing import Protocol
 from . import gemini
 
 _PROMPT = (
-    "Create a vivid, colourful hybrid portrait: blend the human subject in the "
-    "photo with the animal archetype that best matches their personality. "
-    "Render it as a playful wildlife-documentary still — the creature in a lush "
-    "habitat, mid-activity, matching the subject's quirks. Keep a recognisable "
-    "echo of the person's face and features. Do not add text or watermarks."
+    "Blend this person with the animal that best matches their personality in "
+    "a playful wildlife documentary still — colourful, cinematic, in a lush "
+    "habitat, mid-activity, keeping a playful resemblance to the original "
+    "face. Do not add text. Personality dossier: {dossier}"
 )
 
 
@@ -19,7 +18,7 @@ class GeminiImageConverter(Protocol):
 
 class _GeminiImageImpl:
     def generate_hybrid(self, image_bytes: bytes, dossier: str) -> bytes:
-        prompt = f"{_PROMPT} Personality dossier: {dossier}"
+        prompt = _PROMPT.format(dossier=dossier)
         try:
             result = gemini.generate_image(prompt, (image_bytes, "image/jpeg"))
         except Exception:

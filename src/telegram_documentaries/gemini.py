@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import logging
 import os
+import time
 from typing import Any
 
 from . import settings
 
+LOGGER = logging.getLogger("telegram_documentaries")
+
 TEXT_MODEL = "gemini-3.1-flash-lite"
 IMAGE_MODEL = "gemini-3.1-flash-image"
 TTS_MODEL = "gemini-3.1-flash-tts-preview"
+
+# The image model intermittently returns FinishReason.NO_IMAGE and no image
+# data. Retry a few times before giving up.
+_MAX_IMAGE_ATTEMPTS = 4
 
 
 def _ensure_api_key() -> None:
@@ -62,13 +70,31 @@ def generate_image(prompt: str, image: tuple[bytes, str]) -> bytes:
 
     client = load_client()
     data, mime = image
-    response = client.models.generate_content(
-        model=IMAGE_MODEL,
-        contents=_user_content(
-            [types.Part.from_bytes(data=data, mime_type=mime), types.Part(text=prompt)]
-        ),
-        config=types.GenerateContentConfig(response_modalities=["IMAGE"]),
+    contents = _user_content(
+        [types.Part.from_bytes(data=data, mime_type=mime), types.Part(text=prompt)]
     )
+    config = types.GenerateContentConfig(response_modalities=["IMAGE"])
+    for attempt in range(1, _MAX_IMAGE_ATTEMPTS + 1):
+        response = client.models.generate_content(
+            model=IMAGE_MODEL,
+            contents=contents,
+            config=config,
+        )
+        result = _extract_image(response)
+        if result:
+            LOGGER.info("event=image.ok attempt=%d bytes=%d", attempt, len(result))
+            return result
+        LOGGER.warning(
+            "event=image.no_image attempt=%d finish_reason=%s",
+            attempt,
+            _finish_reason(response),
+        )
+        if attempt < _MAX_IMAGE_ATTEMPTS:
+            time.sleep(0.5)
+    return b""
+
+
+def _extract_image(response: Any) -> bytes:
     candidates = getattr(response, "candidates", None) or []
     for candidate in candidates:
         content = getattr(candidate, "content", None)
@@ -79,3 +105,10 @@ def generate_image(prompt: str, image: tuple[bytes, str]) -> bytes:
             if inline is not None and getattr(inline, "data", None):
                 return bytes(inline.data)
     return b""
+
+
+def _finish_reason(response: Any) -> str:
+    candidates = getattr(response, "candidates", None) or []
+    if not candidates:
+        return "NO_CANDIDATES"
+    return str(getattr(candidates[0], "finish_reason", "UNKNOWN"))
