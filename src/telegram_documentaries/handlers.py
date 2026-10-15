@@ -39,7 +39,8 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await message.reply_text(q)
             return
         state.purge(chat_id)
-        msg = f"Nice try, but I don't think that's human. {res.reason}"
+        reason = res.reason
+        msg = f"Nice try, but I don't think that's human. {reason}. Send a clear photo."
         await message.reply_text(msg)
     except Exception:
         await _notify_error(update)
