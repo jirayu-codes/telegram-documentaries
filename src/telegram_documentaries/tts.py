@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import io
+import logging
 import os
 import tempfile
 import wave
 from typing import Any, Protocol, cast
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 TTS_MODEL = "gemini-3.1-flash-tts-preview"
 VOICE_NAME = "Charon"  # deep male voice
@@ -43,10 +46,12 @@ class _GeminiTTSImpl:
             )
             pcm = _extract_audio(response)
             if not pcm:
+                LOGGER.warning("event=tts.empty_response")
                 return b""
             return _encode_ogg(pcm)
         except Exception:
-            return _silent_ogg()
+            LOGGER.exception("event=tts.error")
+            return b""
 
 
 def _extract_audio(response: Any) -> bytes:
@@ -83,20 +88,6 @@ def _encode_ogg(pcm: bytes) -> bytes:
     out = io.BytesIO()
     sf.write(out, data, rate, format="OGG", subtype="OPUS")
     return out.getvalue()
-
-
-def _silent_ogg(seconds: float = 0.25, rate: int = 24000) -> bytes:
-    try:
-        import numpy as np
-        import soundfile as sf
-
-        frames = int(seconds * rate)
-        silence = np.zeros(frames, dtype="int16")
-        out = io.BytesIO()
-        sf.write(out, silence, rate, format="OGG", subtype="OPUS")
-        return out.getvalue()
-    except Exception:
-        return b""
 
 
 _tts: GeminiTTS = _GeminiTTSImpl()

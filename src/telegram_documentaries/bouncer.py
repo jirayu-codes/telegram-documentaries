@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Protocol
 
 from . import gemini
 from .types import ClassificationResult
 
+LOGGER = logging.getLogger("telegram_documentaries")
 TEXT_MODEL = "gemini-3.1-flash-lite"
 
 
@@ -33,6 +35,7 @@ class _GeminiImpl:
                 reason=str(data.get("reason", "")),
             )
         except Exception:
+            LOGGER.exception("event=bouncer.classify.error")
             return ClassificationResult(
                 is_human=False,
                 reason="Security camera's gone fuzzy — can't confirm a human.",

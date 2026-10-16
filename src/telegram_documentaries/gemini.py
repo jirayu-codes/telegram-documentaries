@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 import os
-import time
 from typing import Any
 
 from . import settings
@@ -21,10 +20,11 @@ _MAX_IMAGE_ATTEMPTS = 4
 def _ensure_api_key() -> None:
     try:
         s = settings.load_settings()
-        os.environ.setdefault("GOOGLE_API_KEY", s.gemini_api_key)
+        # Only set one env var: the SDK warns when both GEMINI_API_KEY and
+        # GOOGLE_API_KEY are present. load_client passes the key explicitly.
         os.environ.setdefault("GEMINI_API_KEY", s.gemini_api_key)
     except Exception:
-        pass
+        LOGGER.warning("event=gemini.api_key.unavailable", exc_info=True)
 
 
 def load_client() -> Any:
@@ -35,6 +35,7 @@ def load_client() -> Any:
         s = settings.load_settings()
         return genai.Client(api_key=s.gemini_api_key)
     except Exception:
+        LOGGER.warning("event=gemini.client.fallback", exc_info=True)
         return genai.Client()
 
 
@@ -89,8 +90,6 @@ def generate_image(prompt: str, image: tuple[bytes, str]) -> bytes:
             attempt,
             _finish_reason(response),
         )
-        if attempt < _MAX_IMAGE_ATTEMPTS:
-            time.sleep(0.5)
     return b""
 
 

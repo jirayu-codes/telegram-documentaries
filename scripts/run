@@ -7,9 +7,12 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 LOG="${BOT_LOG:-$PWD/bot.log}"
+# Matches both launch styles: `uv run python -m telegram_documentaries.gateway`
+# and the `telegram-documentaries` console script.
+PATTERN="telegram[-_]documentaries"
 
 # Refuse to start a second poller: two instances cause Telegram 409 conflicts.
-if pgrep -f "telegram_documentaries.gateway" >/dev/null 2>&1; then
+if pgrep -f "$PATTERN" >/dev/null 2>&1; then
     echo "A bot instance is already running. Run scripts/stop first." >&2
     exit 1
 fi
@@ -19,8 +22,18 @@ setsid uv run python -m telegram_documentaries.gateway </dev/null >>"$LOG" 2>&1 
 PID=$!
 disown || true
 
-sleep 2
-if kill -0 "$PID" 2>/dev/null; then
+# Wait for the app to actually report that it is polling.
+for _ in $(seq 1 20); do
+    if ! kill -0 "$PID" 2>/dev/null; then
+        break
+    fi
+    if grep -q "Application started" "$LOG" 2>/dev/null; then
+        break
+    fi
+    sleep 0.5
+done
+
+if kill -0 "$PID" 2>/dev/null && grep -q "Application started" "$LOG" 2>/dev/null; then
     echo "Bot started (pid $PID). Logs: $LOG"
 else
     echo "Bot failed to start. See $LOG" >&2

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Protocol
 
 from . import gemini
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 _MAX_WORDS = 90
 
@@ -34,6 +37,7 @@ class _GeminiImpl:
             script = _enforce_one_paragraph(text)
             return script or _FALLBACK
         except Exception:
+            LOGGER.exception("event=scripter.error")
             return _FALLBACK
 
 

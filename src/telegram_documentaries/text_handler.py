@@ -52,30 +52,42 @@ async def _deliver_documentary(
     LOGGER.info("event=deliver.start dossier_len=%d", len(dossier))
     photo_bytes = st.get("photo_bytes")
     if isinstance(photo_bytes, (bytes, bytearray)):
-        img = converter.generate_hybrid(bytes(photo_bytes), dossier)
-        LOGGER.info("event=deliver.image bytes=%d", len(img))
-        if img:
-            await context.bot.send_photo(chat_id=chat_id, photo=img)
-    script = scripter.generate_script(dossier)
-    LOGGER.info("event=deliver.script chars=%d", len(script))
-    st["script"] = script
-    await context.bot.send_message(chat_id=chat_id, text=script)
-    audio = tts.synthesize_voice(script)
-    LOGGER.info("event=deliver.audio bytes=%d", len(audio))
-    if not audio:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text="(The narrator lost their voice — but the story lives on!)",
-        )
-        return
-    path = tts.write_temp_ogg(audio)
-    st["audio_path"] = path
-    with open(path, "rb") as f:
-        await context.bot.send_voice(
-            chat_id=chat_id,
-            voice=f,
-            filename="documentary.ogg",
-        )
+        try:
+            img = converter.generate_hybrid(bytes(photo_bytes), dossier)
+            LOGGER.info("event=deliver.image bytes=%d", len(img))
+            if img:
+                await context.bot.send_photo(chat_id=chat_id, photo=img)
+        except Exception:
+            LOGGER.exception("event=deliver.image.error")
+
+    script = ""
+    try:
+        script = scripter.generate_script(dossier)
+        LOGGER.info("event=deliver.script chars=%d", len(script))
+        st["script"] = script
+        await context.bot.send_message(chat_id=chat_id, text=script)
+    except Exception:
+        LOGGER.exception("event=deliver.script.error")
+
+    try:
+        audio = tts.synthesize_voice(script)
+        LOGGER.info("event=deliver.audio bytes=%d", len(audio))
+        if not audio:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="(The narrator lost their voice — but the story lives on!)",
+            )
+            return
+        path = tts.write_temp_ogg(audio)
+        st["audio_path"] = path
+        with open(path, "rb") as f:
+            await context.bot.send_voice(
+                chat_id=chat_id,
+                voice=f,
+                filename="documentary.ogg",
+            )
+    except Exception:
+        LOGGER.exception("event=deliver.audio.error")
     LOGGER.info("event=deliver.done")
 
 

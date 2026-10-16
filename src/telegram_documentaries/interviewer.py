@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any, Protocol
 
 from . import gemini
 from .state import state
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 MIN_QUESTIONS = 5
 MAX_QUESTIONS = 7
@@ -32,6 +35,7 @@ class _GeminiImpl:
             text = text.strip().strip('"').strip()
             return text or "What do you snack on at midnight?"
         except Exception:
+            LOGGER.exception("event=interviewer.question.error")
             return "What do you snack on at midnight?"
 
     def synthesize(self, history: list[dict[str, str]]) -> tuple[str, str]:
@@ -49,6 +53,7 @@ class _GeminiImpl:
             animal = str(data.get("suggested_animal", "fox"))
             return dossier, animal
         except Exception:
+            LOGGER.exception("event=interviewer.synthesize.error")
             return "A deeply curious specimen with mysterious habits.", "fox"
 
 

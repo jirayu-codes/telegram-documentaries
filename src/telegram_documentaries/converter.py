@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import logging
 from typing import Protocol
 
 from . import gemini
+
+LOGGER = logging.getLogger("telegram_documentaries")
 
 _PROMPT = (
     "Blend this person with the animal that best matches their personality in "
@@ -22,7 +25,10 @@ class _GeminiImageImpl:
         try:
             result = gemini.generate_image(prompt, (image_bytes, "image/jpeg"))
         except Exception:
+            LOGGER.exception("event=converter.error")
             return b""
+        if not result:
+            LOGGER.warning("event=converter.empty_image")
         return result
 
 

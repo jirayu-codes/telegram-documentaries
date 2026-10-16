@@ -2,7 +2,9 @@
 # Stop the background Telegram bot started by scripts/run.
 set -euo pipefail
 
-if pkill -f "telegram_documentaries.gateway" 2>/dev/null; then
+PATTERN="telegram[-_]documentaries"
+
+if pkill -f "$PATTERN" 2>/dev/null; then
     echo "Bot stopped."
 else
     echo "No running bot found."
